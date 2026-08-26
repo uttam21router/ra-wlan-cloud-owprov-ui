@@ -35,23 +35,29 @@ const ViewAnalyticsSettingsModal = ({ boardId, venueId }: Props) => {
   const [editing, { toggle, off }] = useBoolean();
   const { form, formRef } = useFormRef<{
     name: string;
+    description: string;
+    venueId: string;
+    venueName: string;
+    venueDescription: string;
     interval: number;
     retention: number;
     monitorSubVenues: boolean;
   }>();
   const closeModal = () => (form.dirty ? openConfirm() : modalProps.onClose());
+  const isVenueIdValid = venueId.trim().length > 0;
   const testMonitoringName = (str?: string) => (str ? str.length <= 254 : false);
 
   const Schema = Yup.object()
     .shape({
       name: Yup.string().required(t('form.required')).test('len', t('analytics.monitoring_name_error'), testMonitoringName),
+      venueId: Yup.string().trim().required(t('form.required')),
       interval: Yup.number().required(t('form.required')).moreThan(0).integer(),
       retention: Yup.number().required(t('form.required')).moreThan(0).integer(),
     })
     .nullable()
     .default(undefined);
 
-  const data = getBoard.data?.venueList[0];
+  const data = getBoard.data?.venue;
 
   React.useEffect(() => {
     setFormKey(uuid());
@@ -77,7 +83,7 @@ const ViewAnalyticsSettingsModal = ({ boardId, venueId }: Props) => {
             <SaveButton
               onClick={form.submitForm}
               isLoading={form.isSubmitting}
-              isDisabled={!form.isValid || !form.dirty}
+              isDisabled={!form.isValid || !form.dirty || !isVenueIdValid}
               hidden={!editing}
               isCompact
             />
@@ -101,25 +107,47 @@ const ViewAnalyticsSettingsModal = ({ boardId, venueId }: Props) => {
               enableReinitialize
               key={formKey}
               initialValues={{
-                name: data.name,
+                name: getBoard.data?.name ?? data.name ?? '',
+                description: getBoard.data?.description ?? '',
+                venueId: data.id || venueId,
+                venueName: data.name ?? '',
+                venueDescription: data.description ?? '',
                 interval: data.interval,
                 retention: data.retention,
                 monitorSubVenues: data.monitorSubVenues,
               }}
               validationSchema={Schema}
-              onSubmit={({ name, interval, retention, monitorSubVenues }, { setSubmitting, resetForm }) => {
+              onSubmit={(
+                { name, description, venueId: targetVenueId, venueName, venueDescription, interval, retention, monitorSubVenues },
+                { setSubmitting, resetForm },
+              ) => {
+                const finalVenueId = (targetVenueId || venueId).trim();
+                if (!finalVenueId) {
+                  toast({
+                    id: uuid(),
+                    title: t('common.error'),
+                    description: t('form.required'),
+                    status: 'error',
+                    duration: 5000,
+                    isClosable: true,
+                    position: 'top-right',
+                  });
+                  setSubmitting(false);
+                  return;
+                }
+
                 updateAnalytics.mutateAsync(
                   {
                     name,
-                    venueList: [
-                      {
-                        id: venueId,
-                        name,
-                        retention,
-                        interval,
-                        monitorSubVenues,
-                      },
-                    ],
+                    description,
+                    venue: {
+                      id: finalVenueId,
+                      name: venueName || name,
+                      description: venueDescription || data.description || '',
+                      retention,
+                      interval,
+                      monitorSubVenues,
+                    },
                   },
                   {
                     onSuccess: () => {
@@ -161,6 +189,9 @@ const ViewAnalyticsSettingsModal = ({ boardId, venueId }: Props) => {
               <Form>
                 <VStack spacing={2} alignItems="left">
                   <StringField name="name" label={t('common.name')} isRequired isDisabled={!editing} />
+                  <StringField name="venueId" label={t('venues.one')} isRequired isDisabled />
+                  <StringField name="venueName" label={t('analytics.venue_name', 'Venue Name')} isDisabled={!editing} />
+                  <StringField name="venueDescription" label={t('common.description')} isDisabled={!editing} />
                   <Box maxW="200px">
                     <NumberField
                       name="interval"

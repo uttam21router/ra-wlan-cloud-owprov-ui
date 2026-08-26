@@ -30,22 +30,24 @@ export type AnalyticsBoardDevicesApiResponse = {
   devices: AnalyticsBoardDevice[];
 };
 
-export type AnalyticsBoardApiResponse = {
-  created: number;
-  description: string;
+export type AnalyticsBoardVenue = {
   id: string;
-  modified: number;
   name: string;
-  notes: Note[];
-  tags: string[];
-  venueList: {
-    description: string;
-    id: string;
-    interval: number;
-    monitorSubVenues: boolean;
-    name: string;
-    retention: number;
-  }[];
+  description?: string;
+  retention: number;
+  interval: number;
+  monitorSubVenues: boolean;
+};
+
+export type AnalyticsBoardApiResponse = {
+  created?: number;
+  description?: string;
+  id: string;
+  modified?: number;
+  name: string;
+  notes?: Note[];
+  tags?: string[];
+  venue: AnalyticsBoardVenue;
 };
 
 export type AnalyticsClientLifecycleApiResponse = {

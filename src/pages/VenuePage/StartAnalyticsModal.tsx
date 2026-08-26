@@ -18,6 +18,10 @@ import { AxiosError } from 'models/Axios';
 
 type FormValues = {
   name: string;
+  description: string;
+  venueId: string;
+  venueName: string;
+  venueDescription: string;
   interval: number;
   retention: number;
   monitorSubVenues: boolean;
@@ -38,11 +42,13 @@ const StartAnalyticsModal = ({ id }: Props) => {
   const { isOpen: isConfirmOpen, onOpen: openConfirm, onClose: closeConfirm } = useDisclosure();
   const { form, formRef } = useFormRef<FormValues>();
   const closeModal = () => (form.dirty ? openConfirm() : modalProps.onClose());
+  const isVenueIdValid = id.trim().length > 0;
   const testMonitoringName = (str?: string) => (str ? str.length <= 254 : false);
 
   const Schema = Yup.object()
     .shape({
       name: Yup.string().required(t('form.required')).test('len', t('analytics.monitoring_name_error'), testMonitoringName),
+      venueId: Yup.string().trim().required(t('form.required')),
       interval: Yup.number().required(t('form.required')).moreThan(0).integer(),
       retention: Yup.number().required(t('form.required')).moreThan(0).integer(),
     })
@@ -68,7 +74,11 @@ const StartAnalyticsModal = ({ id }: Props) => {
         isOpen={modalProps.isOpen}
         onClose={closeModal}
         topRightButtons={
-          <SaveButton onClick={form.submitForm} isLoading={form.isSubmitting} isDisabled={!form.isValid} />
+          <SaveButton
+            onClick={form.submitForm}
+            isLoading={form.isSubmitting}
+            isDisabled={!form.isValid || !isVenueIdValid}
+          />
         }
         options={{
           modalSize: 'sm',
@@ -82,25 +92,47 @@ const StartAnalyticsModal = ({ id }: Props) => {
             initialValues={
               {
                 name: getVenue.data?.name ?? '',
+                description: '',
+                venueId: id ?? '',
+                venueName: getVenue.data?.name ?? '',
+                venueDescription: getVenue.data?.description ?? '',
                 interval: 60,
                 retention: 3600 * 24 * 7,
                 monitorSubVenues: true,
               } as FormValues
             }
             validationSchema={Schema}
-            onSubmit={({ name, interval, retention, monitorSubVenues }, { setSubmitting, resetForm }) => {
+            onSubmit={(
+              { name, description, venueId, venueName, venueDescription, interval, retention, monitorSubVenues },
+              { setSubmitting, resetForm },
+            ) => {
+              const targetVenueId = (venueId || id).trim();
+              if (!targetVenueId) {
+                toast({
+                  id: uuid(),
+                  title: t('common.error'),
+                  description: t('form.required'),
+                  status: 'error',
+                  duration: 5000,
+                  isClosable: true,
+                  position: 'top-right',
+                });
+                setSubmitting(false);
+                return;
+              }
+
               createAnalytics.mutateAsync(
                 {
                   name,
-                  venueList: [
-                    {
-                      id,
-                      name,
-                      retention,
-                      interval,
-                      monitorSubVenues,
-                    },
-                  ],
+                  description,
+                  venue: {
+                    id: targetVenueId,
+                    name: venueName || name,
+                    description: venueDescription || getVenue.data?.description || '',
+                    retention,
+                    interval,
+                    monitorSubVenues,
+                  },
                 },
                 {
                   onSuccess: ({ data: boardData }) => {
@@ -167,6 +199,9 @@ const StartAnalyticsModal = ({ id }: Props) => {
             <Form>
               <VStack spacing={2} alignItems="left">
                 <StringField name="name" label={t('common.name')} isRequired />
+                <StringField name="venueId" label={t('venues.one')} isRequired isDisabled />
+                <StringField name="venueName" label={t('analytics.venue_name', 'Venue Name')} />
+                <StringField name="venueDescription" label={t('common.description')} />
                 <Box maxW="200px">
                   <NumberField name="interval" label={t('analytics.interval')} isRequired unit={t('common.seconds')} />
                 </Box>

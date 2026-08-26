@@ -362,6 +362,26 @@ export const EntitySchema = (t: (str: string) => string) =>
     __createLocation: CreateLocationSchema(t, false).nullable().default(undefined),
   });
 
+export const BoardSchema = (t: (str: string) => string) =>
+  Yup.object().shape({
+    name: Yup.string().required(t('form.required')).test('name_test', t('common.name_error'), testObjectName),
+    interval: Yup.number().required(t('form.required')).moreThan(0).integer(),
+    retention: Yup.number().required(t('form.required')).moreThan(0).integer(),
+    monitorSubVenues: Yup.boolean().default(true),
+    venueId: Yup.string().trim().required(t('form.required')),
+    venue: Yup.object()
+      .shape({
+        id: Yup.string().trim().required(t('form.required')),
+        name: Yup.string(),
+        description: Yup.string(),
+        retention: Yup.number().required(t('form.required')).moreThan(0).integer(),
+        interval: Yup.number().required(t('form.required')).moreThan(0).integer(),
+        monitorSubVenues: Yup.boolean(),
+      })
+      .nullable()
+      .default(undefined),
+  });
+
 // Entity Schemas
 export const VenueSchema = (t: (str: string) => string) =>
   Yup.object().shape({
@@ -378,6 +398,7 @@ export const VenueSchema = (t: (str: string) => string) =>
         name: Yup.string().required(t('form.required')).test('name_test', t('common.name_error'), testObjectName),
         interval: Yup.number().required(t('form.required')).moreThan(0).integer(),
         retention: Yup.number().required(t('form.required')).moreThan(0).integer(),
+        venueId: Yup.string().trim().required(t('form.required')),
       })
       .nullable()
       .default(undefined),

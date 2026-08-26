@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   AnalyticsBoardApiResponse,
   AnalyticsBoardDevicesApiResponse,
+  AnalyticsBoardVenue,
   AnalyticsClientLifecycleApiResponse,
   AnalyticsTimePointsApiResponse,
 } from 'models/Analytics';
@@ -245,25 +246,30 @@ export const useGetAnalyticsBoardTimepoints = ({
   );
 };
 
+export type AnalyticsBoardPayload = {
+  name: string;
+  description?: string;
+  venue: AnalyticsBoardVenue;
+};
+
 export const useCreateAnalyticsBoard = () =>
-  useMutation((newBoard: unknown) => axiosAnalytics.post('board/0', newBoard));
+  useMutation((newBoard: AnalyticsBoardPayload) => {
+    if (!newBoard.venue?.id || newBoard.venue.id.trim() === '') {
+      return Promise.reject(new Error('Venue ID is required to create a board.'));
+    }
+    return axiosAnalytics.post('board/0', newBoard);
+  });
 
 export const useUpdateAnalyticsBoard = ({ id }: { id: string }) => {
   const queryClient = useQueryClient();
 
   return useMutation(
-    (newBoard: {
-      name: string;
-      venueList: [
-        {
-          id: string;
-          name: string;
-          retention: number;
-          interval: number;
-          monitorSubVenues: boolean;
-        },
-      ];
-    }) => axiosAnalytics.put(`board/${id}`, newBoard),
+    (newBoard: AnalyticsBoardPayload) => {
+      if (!newBoard.venue?.id || newBoard.venue.id.trim() === '') {
+        return Promise.reject(new Error('Venue ID is required to update a board.'));
+      }
+      return axiosAnalytics.put(`board/${id}`, newBoard);
+    },
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['get-board', id]);
